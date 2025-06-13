@@ -76,13 +76,12 @@ describe('logs entry', () => {
     it('should have the current date, view and global context', () => {
       LOGS.setGlobalContextProperty('foo', 'bar')
 
-      const getCommonContext = startLogs.calls.mostRecent().args[2]
+      const getCommonContext = startLogs.calls.mostRecent().args[1]
       expect(getCommonContext()).toEqual({
         view: {
           referrer: document.referrer,
           url: window.location.href,
         },
-        context: { foo: 'bar' },
         user: {},
       })
     })
@@ -191,7 +190,7 @@ describe('logs entry', () => {
         const user = { id: 'foo', name: 'bar', email: 'qux', foo: { bar: 'qux' } }
         logsPublicApi.setUser(user)
 
-        const getCommonContext = startLogs.calls.mostRecent().args[2]
+        const getCommonContext = startLogs.calls.mostRecent().args[1]
         expect(getCommonContext().user).toEqual({
           email: 'qux',
           foo: { bar: 'qux' },
@@ -203,7 +202,7 @@ describe('logs entry', () => {
       it('should sanitize predefined properties', () => {
         const user = { id: false, name: 2, email: { bar: 'qux' } }
         logsPublicApi.setUser(user as any)
-        const getCommonContext = startLogs.calls.mostRecent().args[2]
+        const getCommonContext = startLogs.calls.mostRecent().args[1]
         expect(getCommonContext().user).toEqual({
           email: '[object Object]',
           id: 'false',
@@ -216,7 +215,7 @@ describe('logs entry', () => {
         logsPublicApi.setUser(user)
         logsPublicApi.clearUser()
 
-        const getCommonContext = startLogs.calls.mostRecent().args[2]
+        const getCommonContext = startLogs.calls.mostRecent().args[1]
         expect(getCommonContext().user).toEqual({})
       })
 
@@ -468,10 +467,6 @@ describe('logs entry', () => {
     it('when disabled, should store contexts only in memory', () => {
       logsPublicApi.init(DEFAULT_INIT_CONFIGURATION)
 
-      logsPublicApi.setGlobalContext({ foo: 'bar' })
-      expect(logsPublicApi.getGlobalContext()).toEqual({ foo: 'bar' })
-      expect(localStorage.getItem('_dd_c_logs_2')).toBeNull()
-
       logsPublicApi.setUser({ id: 'foo', qux: 'qix' })
       expect(logsPublicApi.getUser()).toEqual({ id: 'foo', qux: 'qix' })
       expect(localStorage.getItem('_dd_c_logs_1')).toBeNull()
@@ -497,39 +492,15 @@ describe('logs entry', () => {
       expect(localStorage.getItem('_dd_c_logs_1')).toBe('{}')
     })
 
-    it('when enabled, should maintain global context in local storage', () => {
-      logsPublicApi.init({ ...DEFAULT_INIT_CONFIGURATION, storeContextsAcrossPages: true })
-
-      logsPublicApi.setGlobalContext({ qux: 'qix' })
-      expect(logsPublicApi.getGlobalContext()).toEqual({ qux: 'qix' })
-      expect(localStorage.getItem('_dd_c_logs_2')).toBe('{"qux":"qix"}')
-
-      logsPublicApi.setGlobalContextProperty('foo', 'bar')
-      expect(logsPublicApi.getGlobalContext()).toEqual({ qux: 'qix', foo: 'bar' })
-      expect(localStorage.getItem('_dd_c_logs_2')).toBe('{"qux":"qix","foo":"bar"}')
-
-      logsPublicApi.removeGlobalContextProperty('foo')
-      expect(logsPublicApi.getGlobalContext()).toEqual({ qux: 'qix' })
-      expect(localStorage.getItem('_dd_c_logs_2')).toBe('{"qux":"qix"}')
-
-      logsPublicApi.clearGlobalContext()
-      expect(logsPublicApi.getGlobalContext()).toEqual({})
-      expect(localStorage.getItem('_dd_c_logs_2')).toBe('{}')
-    })
-
     // TODO in next major, buffer context calls to correctly apply before init set/remove/clear
     it('when enabled, before init context values should override local storage values', () => {
       localStorage.setItem('_dd_c_logs_1', '{"foo":"bar","qux":"qix"}')
-      localStorage.setItem('_dd_c_logs_2', '{"foo":"bar","qux":"qix"}')
       logsPublicApi.setUserProperty('foo', 'user')
-      logsPublicApi.setGlobalContextProperty('foo', 'global')
 
       logsPublicApi.init({ ...DEFAULT_INIT_CONFIGURATION, storeContextsAcrossPages: true })
 
       expect(logsPublicApi.getUser()).toEqual({ foo: 'user', qux: 'qix' })
-      expect(logsPublicApi.getGlobalContext()).toEqual({ foo: 'global', qux: 'qix' })
       expect(localStorage.getItem('_dd_c_logs_1')).toBe('{"foo":"user","qux":"qix"}')
-      expect(localStorage.getItem('_dd_c_logs_2')).toBe('{"foo":"global","qux":"qix"}')
     })
   })
 })

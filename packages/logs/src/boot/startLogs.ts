@@ -1,13 +1,17 @@
-import type { TrackingConsentState } from '@datadog/browser-core'
+import type { Context, TrackingConsentState } from '@datadog/browser-core'
 import {
   sendToExtension,
   createPageMayExitObservable,
   willSyntheticsInjectRum,
   canUseEventBridge,
   startAccountContext,
+  startGlobalContext,
+  startTelemetry,
+  TelemetryService,
+  createIdentityEncoder,
 } from '@datadog/browser-core'
 import { startLogsSessionManager, startLogsSessionManagerStub } from '../domain/logsSessionManager'
-import type { LogsConfiguration, LogsInitConfiguration } from '../domain/configuration'
+import type { LogsConfiguration } from '../domain/configuration'
 import { startLogsAssembly } from '../domain/assembly'
 import { startConsoleCollection } from '../domain/console/consoleCollection'
 import { startReportCollection } from '../domain/report/reportCollection'
@@ -19,7 +23,6 @@ import { startLogsBatch } from '../transport/startLogsBatch'
 import { startLogsBridge } from '../transport/startLogsBridge'
 import { startInternalContext } from '../domain/contexts/internalContext'
 import { startReportError } from '../domain/reportError'
-import { startLogsTelemetry } from '../domain/logsTelemetry'
 import type { CommonContext } from '../rawLogsEvent.types'
 import { createHooks } from '../domain/hooks'
 import { startRUMInternalContext } from '../domain/contexts/rumInternalContext'
@@ -28,7 +31,6 @@ export type StartLogs = typeof startLogs
 export type StartLogsResult = ReturnType<StartLogs>
 
 export function startLogs(
-  initConfiguration: LogsInitConfiguration,
   configuration: LogsConfiguration,
   getCommonContext: () => CommonContext,
 
@@ -46,28 +48,32 @@ export function startLogs(
   const reportError = startReportError(lifeCycle)
   const pageMayExitObservable = createPageMayExitObservable(configuration)
 
+  const telemetry = startTelemetry(
+    TelemetryService.LOGS,
+    configuration,
+    reportError,
+    pageMayExitObservable,
+    createIdentityEncoder
+  )
+  cleanupTasks.push(telemetry.stop)
+
   const session =
     configuration.sessionStoreStrategyType && !canUseEventBridge() && !willSyntheticsInjectRum()
       ? startLogsSessionManager(configuration, trackingConsentState)
       : startLogsSessionManagerStub(configuration)
+  telemetry.setContextProvider('session.id', () => session.findTrackedSession()?.id)
 
+  const accountContext = startAccountContext(hooks, configuration, 'logs')
+  const globalContext = startGlobalContext(hooks, configuration, 'logs', false)
   const { stop, getRUMInternalContext } = startRUMInternalContext(hooks)
-
-  const { stop: stopLogsTelemetry } = startLogsTelemetry(
-    initConfiguration,
-    configuration,
-    reportError,
-    pageMayExitObservable,
-    session,
-    getRUMInternalContext
-  )
-  cleanupTasks.push(() => stopLogsTelemetry())
+  telemetry.setContextProvider('application.id', () => getRUMInternalContext()?.application_id)
+  telemetry.setContextProvider('view.id', () => (getRUMInternalContext()?.view as Context)?.id)
+  telemetry.setContextProvider('action.id', () => (getRUMInternalContext()?.user_action as Context)?.id)
 
   startNetworkErrorCollection(configuration, lifeCycle)
   startRuntimeErrorCollection(configuration, lifeCycle)
   startConsoleCollection(configuration, lifeCycle)
   startReportCollection(configuration, lifeCycle)
-  const accountContext = startAccountContext(hooks, configuration, 'logs')
   const { handleLog } = startLoggerCollection(lifeCycle)
 
   startLogsAssembly(session, configuration, lifeCycle, hooks, getCommonContext, reportError)
@@ -91,6 +97,7 @@ export function startLogs(
     handleLog,
     getInternalContext: internalContext.get,
     accountContext,
+    globalContext,
     stop: () => {
       cleanupTasks.forEach((task) => task())
       stop()
