@@ -340,6 +340,24 @@ describe('startSessionManager', () => {
       expect(state.isExpired).toBe(EXPIRED)
     })
 
+    it('should not expand another tab session via visibility check after expiration', async () => {
+      const sessionManager = await startSessionManagerWithDefaults()
+      sessionManager.expire()
+
+      // Simulate another tab writing its own session to the shared store
+      const otherTabExpire = String(Date.now() + SESSION_EXPIRATION_DELAY)
+      fakeStrategy.simulateExternalChange({
+        id: 'other-tab-session',
+        created: String(Date.now()),
+        expire: otherTabExpire,
+      })
+
+      clock.tick(VISIBILITY_CHECK_DELAY)
+
+      // The other tab's expire should not have been pushed forward
+      expect(fakeStrategy.getInternalState().expire).toBe(otherTabExpire)
+    })
+
     it('should expire session after SESSION_EXPIRATION_DELAY without any activity in a hidden tab', async () => {
       const sessionManager = await startSessionManagerWithDefaults()
       const expireSpy = jasmine.createSpy('expire')
@@ -352,6 +370,29 @@ describe('startSessionManager', () => {
 
       await collectAsyncCalls(expireSpy, 1)
 
+      expect(expireSpy).toHaveBeenCalledTimes(1)
+      expect(sessionManager.findSession()).toBeUndefined()
+    })
+
+    it('should expire session after SESSION_TIME_OUT_DELAY even on a continuously visible page', async () => {
+      setPageVisibility('visible')
+      const sessionManager = await startSessionManagerWithDefaults()
+      const expireSpy = jasmine.createSpy('expire')
+      sessionManager.expireObservable.subscribe(expireSpy)
+
+      expect(sessionManager.findSession()).toBeDefined()
+
+      // Fast forward to the end of the session
+      clock.tick(SESSION_TIME_OUT_DELAY)
+      // Drain the pending setSessionState microtasks so that scheduleExpirationTimeout runs
+      // and registers the 0ms expiry timeout.
+      await Promise.resolve()
+      // Fire the 0ms expiry timeout.
+      clock.tick(0)
+
+      await collectAsyncCalls(expireSpy, 1)
+
+      expect(fakeStrategy.getInternalState()).toEqual({ isExpired: EXPIRED })
       expect(expireSpy).toHaveBeenCalledTimes(1)
       expect(sessionManager.findSession()).toBeUndefined()
     })

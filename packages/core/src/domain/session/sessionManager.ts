@@ -165,7 +165,7 @@ export async function startSessionManager(
   function scheduleExpirationTimeout(state: SessionState) {
     clearTimeout(expirationTimeoutId)
     const expireDate = getExpireDate(state)
-    if (expireDate && !isSessionInExpiredState(state)) {
+    if (expireDate) {
       const delay = expireDate - dateNow()
       expirationTimeoutId = setTimeout(() => {
         strategy
@@ -202,7 +202,9 @@ export async function startSessionManager(
         }
       })
       trackVisibility(configuration, () => {
-        strategy.setSessionState((state) => expandOnly(state)).catch(monitorError)
+        if (!sessionExpired) {
+          strategy.setSessionState((state) => expandOnly(state)).catch(monitorError)
+        }
       })
       trackResume(configuration, () => {
         strategy.setSessionState((state) => initializeSession(state, configuration)).catch(monitorError)
