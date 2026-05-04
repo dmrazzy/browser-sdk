@@ -136,9 +136,13 @@ function injectHeadersIfTracingAllowed(
     return
   }
 
+  const fallbackTraceSampled = isSampled(
+    session.id,
+    correctedChildSampleRate(configuration.sessionSampleRate, configuration.traceSampleRate)
+  )
   const traceSampled = canUseEventBridge()
-    ? (getEventBridge()?.getIsTraceSampled() ?? isSampled(session.id, configuration.traceSampleRate))
-    : isSampled(session.id, correctedChildSampleRate(configuration.sessionSampleRate, configuration.traceSampleRate))
+    ? (getEventBridge()?.getIsTraceSampled() ?? fallbackTraceSampled)
+    : fallbackTraceSampled
 
   const shouldInjectHeaders = traceSampled || configuration.traceContextInjection === TraceContextInjection.ALL
   if (!shouldInjectHeaders) {
