@@ -6,6 +6,8 @@ import {
   TraceContextInjection,
   correctedChildSampleRate,
   isSampled,
+  canUseEventBridge,
+  getEventBridge,
 } from '@datadog/browser-core'
 import type { RumConfiguration } from '../configuration'
 import type {
@@ -134,10 +136,13 @@ function injectHeadersIfTracingAllowed(
     return
   }
 
-  const traceSampled = isSampled(
+  const fallbackTraceSampled = isSampled(
     session.id,
     correctedChildSampleRate(configuration.sessionSampleRate, configuration.traceSampleRate)
   )
+  const traceSampled = canUseEventBridge()
+    ? (getEventBridge()?.getIsTraceSampled() ?? fallbackTraceSampled)
+    : fallbackTraceSampled
 
   const shouldInjectHeaders = traceSampled || configuration.traceContextInjection === TraceContextInjection.ALL
   if (!shouldInjectHeaders) {
