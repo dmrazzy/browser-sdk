@@ -40,7 +40,7 @@ describe('LocalStorage SessionStoreStrategy', () => {
     })
 
     it('should read existing state from localStorage', () => {
-      localStorage.setItem(SESSION_STORE_KEY, toSessionString({ id: 'existing' } as SessionState))
+      localStorage.setItem(SESSION_STORE_KEY, toSessionString({ id: 'existing' }))
 
       void strategy.setSessionState((state) => {
         expect(state.id).toBe('existing')
@@ -70,7 +70,7 @@ describe('LocalStorage SessionStoreStrategy', () => {
       // Simulate storage event (fired by other tabs)
       const event = new StorageEvent('storage', {
         key: SESSION_STORE_KEY,
-        newValue: toSessionString({ id: 'from-other-tab' } as SessionState),
+        newValue: toSessionString({ id: 'from-other-tab' }),
         storageArea: localStorage,
       })
       window.dispatchEvent(event)
@@ -111,7 +111,7 @@ describe('LocalStorage SessionStoreStrategy', () => {
     })
 
     it('should not read from legacy key when new key has data', async () => {
-      localStorage.setItem(SESSION_STORE_KEY, toSessionString({ id: 'new-id' } as SessionState))
+      localStorage.setItem(SESSION_STORE_KEY, toSessionString({ id: 'new-id' }))
       localStorage.setItem(LEGACY_SESSION_STORE_KEY, 'id=legacy-id')
 
       let capturedState: SessionState | undefined
