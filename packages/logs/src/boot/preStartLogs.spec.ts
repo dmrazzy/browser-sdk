@@ -9,7 +9,7 @@ import {
   replaceMockableWithSpy,
   createStartSessionManagerMock,
 } from '@datadog/browser-core/test'
-import type { TimeStamp, TrackingConsentState } from '@datadog/browser-core'
+import type { TrackingConsentState } from '@datadog/browser-core'
 import {
   ONE_SECOND,
   TrackingConsent,
@@ -158,7 +158,7 @@ describe('preStartLogs', () => {
       strategy.init(DEFAULT_INIT_CONFIGURATION)
       await collectAsyncCalls(handleLogSpy, 1)
 
-      expect(getLoggedMessage(0).savedDate).toEqual((Date.now() - ONE_SECOND) as TimeStamp)
+      expect(getLoggedMessage(0).savedDate).toEqual(Date.now() - ONE_SECOND)
     })
 
     it('saves the URL', async () => {

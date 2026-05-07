@@ -33,7 +33,7 @@ export function trackMutation(
     )
   })
 
-  const observer = new MutationObserver(monitor(mutationBatch.addMutations) as (callback: RumMutationRecord[]) => void)
+  const observer = new MutationObserver(monitor(mutationBatch.addMutations))
 
   observer.observe(target, {
     attributeOldValue: true,

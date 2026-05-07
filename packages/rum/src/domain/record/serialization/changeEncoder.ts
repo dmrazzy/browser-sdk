@@ -34,7 +34,7 @@ export function createChangeEncoder(stringIds: StringIds): ChangeEncoder {
       const item = array[index]
       if (typeof item === 'string') {
         const currentSize = stringIds.size
-        if (currentSize < (StringIdConstants.SOFT_MAX_SIZE as number)) {
+        if (currentSize < Number(StringIdConstants.SOFT_MAX_SIZE)) {
           // Insert this string into the string table.
           array[index] = stringIds.getOrInsert(item)
           if (stringIds.size > currentSize) {

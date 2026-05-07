@@ -1,4 +1,4 @@
-import type { BufferedData, ConsoleLog, RawError, Context } from '@datadog/browser-core'
+import type { BufferedData, ConsoleLog, RawError } from '@datadog/browser-core'
 import {
   BufferedDataType,
   ConsoleApiName,
@@ -136,7 +136,7 @@ describe('console collection', () => {
       api: ConsoleApiName.error,
       message: 'Error: foo',
       handlingStack: '',
-      error: makeRawError({ context: { foo: 'bar' } as Context }),
+      error: makeRawError({ context: { foo: 'bar' } }),
     })
 
     expect(rawLogsEvents[0].messageContext).toEqual({ foo: 'bar' })
